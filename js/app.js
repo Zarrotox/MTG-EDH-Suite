@@ -35,6 +35,10 @@ const DOM = {
   btnSizeTableList: document.querySelectorAll('.btn-size-table'),
   btnResetTableGame: document.getElementById('btn-reset-table-game'),
   btnLogTableGame: document.getElementById('btn-log-table-game'),
+  btnToggleTableSetup: document.getElementById('btn-toggle-table-setup'),
+  btnCloseTableSetup: document.getElementById('btn-close-table-setup'),
+  tableSetupDrawer: document.getElementById('table-setup-drawer'),
+  tableVictoryOverlay: document.getElementById('table-victory-overlay'),
   tablePlayersDropdownsContainer: document.getElementById('table-players-dropdowns-container'),
   tableGridArenaContainer: document.getElementById('table-grid-arena-container'),
 
@@ -260,9 +264,6 @@ function initializeTablePlayers() {
   // Re-build seats
   State.tableState.players = [];
   for (let i = 0; i < seats; i++) {
-    const seatId = `seat_${i}`;
-    
-    // Choose a default guest player
     const defaultName = `Planeswalker ${i + 1}`;
     
     State.tableState.players.push({
@@ -303,6 +304,9 @@ function initializeTablePlayers() {
     });
   });
 
+  // Collapse setup bar drawer on layout changes for clean look
+  DOM.tableSetupDrawer.style.display = 'none';
+
   renderTableArena();
 }
 
@@ -324,7 +328,6 @@ function handleSeatPlayerChange(seatIndex, playerId) {
       playerState.id = profile.id;
       playerState.name = profile.name;
       
-      // Load their decks
       if (deckSelect) {
         deckSelect.style.display = 'block';
         deckSelect.innerHTML = `<option value="default">Default Deck</option>`;
@@ -350,6 +353,16 @@ function handleSeatPlayerChange(seatIndex, playerId) {
 }
 
 function setupTableEvents() {
+  // Collapsible Top Settings Drawer toggles
+  DOM.btnToggleTableSetup.addEventListener('click', () => {
+    const isHidden = DOM.tableSetupDrawer.style.display === 'none';
+    DOM.tableSetupDrawer.style.display = isHidden ? 'block' : 'none';
+  });
+
+  DOM.btnCloseTableSetup.addEventListener('click', () => {
+    DOM.tableSetupDrawer.style.display = 'none';
+  });
+
   // Seat size selectors (2 to 5 players)
   DOM.btnSizeTableList.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -370,31 +383,28 @@ function setupTableEvents() {
       p.tax = 0;
       p.cmdDamage = {};
     });
+    // Dismiss victory overlay if active
+    DOM.tableVictoryOverlay.style.display = 'none';
     renderTableArena();
   });
 
   // Log table result shortcut
   DOM.btnLogTableGame.addEventListener('click', () => {
-    // Collect players who played
     const activeTablePlayers = State.tableState.players.map(p => ({
       id: p.id,
       name: p.name,
       deck: p.deck
     }));
 
-    // Filter out guests for logging (cannot log match with guests)
     const hasGuests = activeTablePlayers.some(p => p.id.startsWith('guest_'));
     if (hasGuests) {
-      alert("Cannot log match history with Guest players. Please create and select full Planeswalker profiles for all seats in the Roster tab first!");
+      alert("Cannot log match history with Guest players. Please create and select full Planeswalker profiles in the Roster tab first!");
       return;
     }
 
-    // Switch view to Roster, and go to Roster Match Logging tab
     switchView('roster');
     switchRosterTab('log');
 
-    // Pre-populate dropdown selectors in the Match logger form
-    // Dropdowns: log-winner-select, log-loser1-select, etc.
     const selects = [
       DOM.logWinnerSelect,
       DOM.logLoser1Select,
@@ -405,11 +415,9 @@ function setupTableEvents() {
     selects.forEach((sel, selIndex) => {
       if (selIndex < activeTablePlayers.length) {
         sel.value = activeTablePlayers[selIndex].id;
-        // Trigger manual change to load their decks dropdown
         const event = new Event('change');
         sel.dispatchEvent(event);
         
-        // Match deck selection
         const deckSelectId = sel.id === 'log-winner-select' ? 'log-winner-deck' : `log-${sel.id.split('-')[1]}-deck`;
         const deckSel = document.getElementById(deckSelectId);
         if (deckSel) {
@@ -424,11 +432,8 @@ function setupTableEvents() {
 
 function renderTableArena() {
   DOM.tableGridArenaContainer.innerHTML = '';
-  
-  // Set class on container for layout
   DOM.tableGridArenaContainer.className = `table-grid-arena grid-${State.tableState.playerCount}`;
 
-  // Seeding mana themes
   const seatThemes = ['w-theme', 'u-theme', 'b-theme', 'r-theme', 'g-theme'];
 
   State.tableState.players.forEach((player, index) => {
@@ -446,19 +451,38 @@ function renderTableArena() {
       card.classList.add('lethal-commander');
     }
 
-    // Prepare Commander Damage content
+    // Dynamic Active Counter pill badges in lower-left
+    let activeCountersHtml = '';
+    if (player.poison > 0) {
+      activeCountersHtml += `<span class="counter-badge poison"><i class="fa-solid fa-biohazard"></i> ${player.poison}</span>`;
+    }
+    if (player.rad > 0) {
+      activeCountersHtml += `<span class="counter-badge rad"><i class="fa-solid fa-radiation"></i> ${player.rad}</span>`;
+    }
+    if (player.tax > 0) {
+      activeCountersHtml += `<span class="counter-badge tax"><i class="fa-solid fa-gavel"></i> ${player.tax}</span>`;
+    }
+    
+    let totalCmdDmg = 0;
+    Object.values(player.cmdDamage).forEach(dmg => { totalCmdDmg += dmg; });
+    if (totalCmdDmg > 0) {
+      activeCountersHtml += `<span class="counter-badge cmd"><i class="fa-solid fa-shield-halved"></i> ${totalCmdDmg}</span>`;
+    }
+
+    // Prepare Commander Damage content for the sliders drawer
     let cmdDmgHtml = '';
     State.tableState.players.forEach((opp, oppIndex) => {
       if (oppIndex !== index) {
-        const curDmg = player.cmdDamage[opp.id] || 0;
+        const oppId = opp.id;
+        const curDmg = player.cmdDamage[oppId] || 0;
         const lethalClass = curDmg >= 21 ? 'streak-indicator' : '';
         cmdDmgHtml += `
           <div class="cmd-dmg-item-row">
             <span class="cmd-dmg-player-name"><i class="fa-solid fa-swords"></i> Damage from ${escapeHtml(opp.name)}:</span>
             <div class="drawer-counter-row">
-              <button type="button" class="btn-drawer-counter" data-action="cmd-dmg-dec" data-opp="${opp.id}">-</button>
+              <button type="button" class="btn-drawer-counter" data-action="cmd-dmg-dec" data-opp="${oppId}">-</button>
               <span class="drawer-counter-val ${lethalClass}">${curDmg}</span>
-              <button type="button" class="btn-drawer-counter" data-action="cmd-dmg-inc" data-opp="${opp.id}">+</button>
+              <button type="button" class="btn-drawer-counter" data-action="cmd-dmg-inc" data-opp="${oppId}">+</button>
             </div>
           </div>
         `;
@@ -471,31 +495,33 @@ function renderTableArena() {
           <span class="player-card-name">${escapeHtml(player.name)}</span>
           <span class="player-card-deck">${escapeHtml(player.deck)}</span>
         </div>
-        <span class="tax-val" style="font-size: 0.75rem; text-transform:uppercase;">Seat ${index + 1}</span>
+        <span class="tax-val" style="font-size: 0.7rem; text-transform:uppercase; color:var(--text-muted);">Seat ${index + 1}</span>
       </div>
 
       <div class="life-counter-section">
         <button type="button" class="btn-life btn-life-minus" data-action="life-dec">-</button>
         <span class="life-val-display">${player.life}</span>
         <button type="button" class="btn-life btn-life-plus" data-action="life-inc">+</button>
-      </div>
-
-      <div class="commander-tax-sub">
-        <span class="tax-label"><i class="fa-solid fa-gavel"></i> Commander Tax</span>
-        <div class="tax-controls">
-          <button type="button" class="tax-btn" data-action="tax-dec">-</button>
-          <span class="tax-val">${player.tax}</span>
-          <button type="button" class="tax-btn" data-action="tax-inc">+</button>
+        
+        <!-- Premium floating counter elements inside card face -->
+        <div class="active-counters-indicator">
+          ${activeCountersHtml || '<span style="font-size:0.65rem; color:var(--text-muted); opacity:0.5; font-weight:600;"><i class="fa-solid fa-chart-bar"></i> No active counters</span>'}
         </div>
+        <button type="button" class="drawer-toggle-trigger" data-action="drawer-open" title="Open sliders drawer">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
       </div>
 
-      <!-- Toggleable drawers overlay -->
-      <button type="button" class="drawer-toggle-trigger" data-action="drawer-open">
-        <i class="fa-solid fa-chart-line"></i> Trackers
-      </button>
-
+      <!-- Hidden Drawers Overlay (Rendered fixed relative to viewport) -->
       <div class="drawer-panel" data-seat="${index}">
         <div class="drawer-handle" data-action="drawer-close"></div>
+        <div class="drawer-header" style="text-align: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.75rem;">
+          <h3 style="font-family: var(--font-display); color: var(--color-brand); font-size: 1.35rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-shadow: 0 0 10px var(--glow-brand); margin-bottom: 0.2rem;">
+            <i class="fa-solid fa-user-gear"></i> ${escapeHtml(player.name)}'s Trackers
+          </h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Deck: ${escapeHtml(player.deck)} • Seat ${index + 1}</span>
+        </div>
+        
         <div class="drawer-body-grid">
           
           <div class="drawer-counter-card">
@@ -503,7 +529,7 @@ function renderTableArena() {
             <div class="drawer-counter-row">
               <button type="button" class="btn-drawer-counter" data-action="poison-dec">-</button>
               <span class="drawer-counter-val" style="color:var(--color-green);">${player.poison}</span>
-              <button type="button" class="btn-drawer-counter" data-action="poison-inc">+</button>
+               <button type="button" class="btn-drawer-counter" data-action="poison-inc">+</button>
             </div>
           </div>
 
@@ -516,6 +542,16 @@ function renderTableArena() {
             </div>
           </div>
 
+          <!-- Commander Tax shifted to drawer for clean Lotus-like card aesthetics -->
+          <div class="drawer-counter-card" style="grid-column: span 2;">
+            <span class="drawer-card-label"><i class="fa-solid fa-gavel"></i> Commander Tax</span>
+            <div class="drawer-counter-row">
+              <button type="button" class="btn-drawer-counter" data-action="tax-dec">-</button>
+              <span class="drawer-counter-val" style="color:var(--color-brand);">${player.tax}</span>
+              <button type="button" class="btn-drawer-counter" data-action="tax-inc">+</button>
+            </div>
+          </div>
+
           <div class="drawer-commander-dmg-block">
             <span class="drawer-card-label" style="justify-content:flex-start; margin-bottom:0.25rem;"><i class="fa-solid fa-crown" style="color:var(--color-brand);"></i> Commander Damage Received (Max 21)</span>
             ${cmdDmgHtml}
@@ -525,7 +561,6 @@ function renderTableArena() {
       </div>
     `;
 
-    // Bind Life & Tax Events directly on elements
     bindTableCardEvents(card, index);
 
     DOM.tableGridArenaContainer.appendChild(card);
@@ -536,10 +571,10 @@ function bindTableCardEvents(card, seatIndex) {
   const p = State.tableState.players[seatIndex];
 
   // Life buttons
-  card.querySelector('[data-action="life-dec"]').onclick = () => { p.life--; renderTableArena(); };
-  card.querySelector('[data-action="life-inc"]').onclick = () => { p.life++; renderTableArena(); };
+  card.querySelector('[data-action="life-dec"]').onclick = () => { p.life--; renderTableArena(); checkTableGameEnd(); };
+  card.querySelector('[data-action="life-inc"]').onclick = () => { p.life++; renderTableArena(); checkTableGameEnd(); };
 
-  // Tax buttons
+  // Tax buttons inside drawer
   card.querySelector('[data-action="tax-dec"]').onclick = () => { p.tax = Math.max(0, p.tax - 2); renderTableArena(); };
   card.querySelector('[data-action="tax-inc"]').onclick = () => { p.tax += 2; renderTableArena(); };
 
@@ -548,13 +583,16 @@ function bindTableCardEvents(card, seatIndex) {
   card.querySelector('[data-action="drawer-open"]').onclick = () => { drawer.classList.add('open'); };
   card.querySelector('[data-action="drawer-close"]').onclick = () => { drawer.classList.remove('open'); };
 
+  // Tapping the active indicators area also opens trackers drawer (very friendly mobile gesture!)
+  card.querySelector('.active-counters-indicator').onclick = () => { drawer.classList.add('open'); };
+
   // Poison buttons
-  card.querySelector('[data-action="poison-dec"]').onclick = () => { p.poison = Math.max(0, p.poison - 1); renderTableArena(); };
-  card.querySelector('[data-action="poison-inc"]').onclick = () => { p.poison++; renderTableArena(); };
+  card.querySelector('[data-action="poison-dec"]').onclick = () => { p.poison = Math.max(0, p.poison - 1); renderTableArena(); checkTableGameEnd(); };
+  card.querySelector('[data-action="poison-inc"]').onclick = () => { p.poison++; renderTableArena(); checkTableGameEnd(); };
 
   // Rads buttons
-  card.querySelector('[data-action="rad-dec"]').onclick = () => { p.rad = Math.max(0, p.rad - 1); renderTableArena(); };
-  card.querySelector('[data-action="rad-inc"]').onclick = () => { p.rad++; renderTableArena(); };
+  card.querySelector('[data-action="rad-dec"]').onclick = () => { p.rad = Math.max(0, p.rad - 1); renderTableArena(); checkTableGameEnd(); };
+  card.querySelector('[data-action="rad-inc"]').onclick = () => { p.rad++; renderTableArena(); checkTableGameEnd(); };
 
   // Commander Damage counters
   card.querySelectorAll('[data-action^="cmd-dmg-"]').forEach(btn => {
@@ -569,6 +607,7 @@ function bindTableCardEvents(card, seatIndex) {
         p.cmdDamage[oppId] = Math.max(0, curDmg - 1);
       }
       renderTableArena();
+      checkTableGameEnd();
     };
   });
 
@@ -587,27 +626,163 @@ function bindTableCardEvents(card, seatIndex) {
   }, { passive: true });
 }
 
+// --- DYNAMIC GAME END & VICTORY OVERLAY CONTROLLERS ---
+function checkTableGameEnd() {
+  // If victory overlay is already visible, bypass to prevent double logging
+  if (DOM.tableVictoryOverlay.style.display === 'flex') return;
+
+  const seats = State.tableState.players;
+  // Auto detect only for standard playgroups of 2-5 players
+  if (seats.length < 2) return;
+
+  const activePlayers = seats.map(p => {
+    // Find maximum commander damage received from any opponent
+    let maxCmdDmg = 0;
+    Object.values(p.cmdDamage).forEach(dmg => {
+      if (dmg > maxCmdDmg) maxCmdDmg = dmg;
+    });
+
+    // Lose criteria: life total <= 0, poison counters >= 10, or commander damage from single opponent >= 21
+    const isDefeated = p.life <= 0 || p.poison >= 10 || maxCmdDmg >= 21;
+    return {
+      ...p,
+      isDefeated
+    };
+  });
+
+  const defeatedCount = activePlayers.filter(p => p.isDefeated).length;
+  const alivePlayers = activePlayers.filter(p => !p.isDefeated);
+
+  // Victory condition: Exactly one player remains undefeated
+  if (defeatedCount === seats.length - 1 && alivePlayers.length === 1) {
+    const winner = alivePlayers[0];
+    const losers = activePlayers.filter(p => p.isDefeated);
+    
+    showVictoryOverlay(winner, losers);
+  }
+}
+
+function showVictoryOverlay(winner, losers) {
+  const overlay = DOM.tableVictoryOverlay;
+  const announcement = document.getElementById('victory-announcement');
+  const detailsBox = document.getElementById('victory-details-box');
+
+  announcement.textContent = `${winner.name} has defeated all rivals!`;
+
+  // Pre-calculate ELO rating updates for display preview
+  const winnerId = winner.id;
+  const players = StorageManager.getPlayers();
+  const winnerProfile = players.find(p => p.id === winnerId);
+  const winnerOldElo = winnerProfile ? winnerProfile.elo : 1200;
+  let totalEloGained = 0;
+  const detailsHtml = [];
+
+  const isGuest = winnerId.startsWith('guest_') || losers.some(l => l.id.startsWith('guest_'));
+
+  losers.forEach(loser => {
+    const loserProfile = players.find(p => p.id === loser.id);
+    const loserOldElo = loserProfile ? loserProfile.elo : 1200;
+    
+    const expectedWinner = 1 / (1 + Math.pow(10, (loserOldElo - winnerOldElo) / 400));
+    const stdChange = 32 * (1 - expectedWinner);
+    const roundedStdChange = Math.round(stdChange * 10) / 10;
+    
+    let bountyBonus = 0;
+    const loserBounty = loserProfile ? (loserProfile.bounty || 0) : 0;
+    if (loserBounty > 0) {
+      bountyBonus = roundedStdChange * (loserBounty / 100);
+      bountyBonus = Math.round(bountyBonus * 10) / 10;
+    }
+
+    totalEloGained += (roundedStdChange + bountyBonus);
+    
+    detailsHtml.push(`
+      <div class="victory-row loser">
+        <span>${escapeHtml(loser.name)} (${escapeHtml(loser.deck)})</span>
+        <span style="color:var(--color-red); font-weight:bold;">-${roundedStdChange} ELO ${loserBounty > 0 ? `(Bounty ${loserBounty}% Claimed)` : ''}</span>
+      </div>
+    `);
+  });
+
+  const finalEloGained = Math.round(totalEloGained * 10) / 10;
+  detailsHtml.unshift(`
+    <div class="victory-row winner">
+      <span>${escapeHtml(winner.name)} (${escapeHtml(winner.deck)})</span>
+      <span style="color:var(--color-green); font-weight:bold;">+${finalEloGained} ELO</span>
+    </div>
+  `);
+
+  // Automatic Match Logging!
+  let autoLogBannerHtml = '';
+  if (!isGuest) {
+    const loserParams = losers.map(l => ({ id: l.id, deck: l.deck }));
+    const newMatch = StorageManager.logMatch(winner.id, winner.deck, loserParams);
+    if (newMatch) {
+      console.log("Match automatically logged! Winner ELO:", newMatch.winner.newElo);
+      autoLogBannerHtml = `
+        <div style="background: rgba(0, 255, 102, 0.08); border: 1px solid rgba(0, 255, 102, 0.2); border-radius: 6px; padding: 0.5rem; text-align: center; color: var(--color-green); font-size: 0.85rem; font-weight: bold; margin-bottom: 0.75rem; text-shadow: 0 0 5px var(--glow-green);">
+          <i class="fa-solid fa-circle-check"></i> Match Automatically Logged!
+        </div>
+      `;
+      // Instantly refresh views in memory
+      renderRoster();
+      renderEloLeaderboard();
+      renderDecksLeaderboard();
+      renderRecentMatches();
+    }
+  } else {
+    autoLogBannerHtml = `
+      <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-glass); border-radius: 6px; padding: 0.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; font-weight: 500; margin-bottom: 0.75rem;">
+        <i class="fa-solid fa-triangle-exclamation"></i> Guests Present: ELO Standings Not Logged
+      </div>
+    `;
+  }
+
+  detailsBox.innerHTML = autoLogBannerHtml + detailsHtml.join('');
+  overlay.style.display = 'flex';
+
+  // "Start New Game" - Resets counter and dismisses overlay
+  const dismissBtn = document.getElementById('btn-victory-dismiss');
+  dismissBtn.textContent = "Start New Game";
+  dismissBtn.onclick = () => {
+    overlay.style.display = 'none';
+    resetTableCounters();
+  };
+
+  // "View Standings" / "Log Blocked"
+  const logBtn = document.getElementById('btn-victory-log-roster');
+  if (isGuest) {
+    logBtn.disabled = true;
+    logBtn.textContent = "Log Unavailable";
+    logBtn.style.opacity = '0.5';
+    logBtn.onclick = null;
+  } else {
+    logBtn.disabled = false;
+    logBtn.textContent = "View Standings";
+    logBtn.style.opacity = '1';
+    logBtn.onclick = () => {
+      overlay.style.display = 'none';
+      resetTableCounters();
+      switchView('roster');
+      switchRosterTab('dashboard');
+    };
+  }
+}
+
+function resetTableCounters() {
+  State.tableState.players.forEach(p => {
+    p.life = 40;
+    p.poison = 0;
+    p.rad = 0;
+    p.tax = 0;
+    p.cmdDamage = {};
+  });
+  renderTableArena();
+}
+
 // ==========================================================================
 // SERVICE 2: THE POD (LARGE GROUP ORGANIZER CONTROLLERS)
 // ==========================================================================
-
-function updateTargetSize(size) {
-  State.targetSize = size;
-  StorageManager.saveSettings({ targetSize: size });
-
-  [DOM.size3Btn, DOM.size4Btn, DOM.size5Btn].forEach(btn => {
-    if (btn) {
-      const btnSize = parseInt(btn.dataset.size, 10);
-      if (btnSize === size) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-    }
-  });
-
-  updateActiveCount();
-}
 
 function setupPodEvents() {
   // Pod size organizers
@@ -1532,7 +1707,6 @@ function renderRecentMatches() {
 // --- ROSTER MATCH LOGGER CONTROLLERS ---
 
 function setupMatchLoggerDropdowns() {
-  // Listeners on player selectors to dynamically load their deck selects
   const playersSelects = [
     { player: DOM.logWinnerSelect, deck: DOM.logWinnerDeck },
     { player: DOM.logLoser1Select, deck: DOM.logLoser1Deck },
@@ -1559,12 +1733,10 @@ function populateMatchDropdowns() {
   ];
 
   selectors.forEach(sel => {
-    // Preserve old selection if still valid
     const oldVal = sel.value;
     
     sel.innerHTML = `<option value="">-- Select Planeswalker --</option>`;
     players.forEach(p => {
-      // Show their ELO and streak in dropdown
       const streakText = p.winStreak >= 2 ? ` 🔥${p.winStreak}` : '';
       sel.innerHTML += `<option value="${p.id}">${escapeHtml(p.name)} (ELO: ${Math.round(p.elo)}${streakText})</option>`;
     });
@@ -1608,7 +1780,6 @@ function handleMatchLoggingSubmit(e) {
   const loser3Id = DOM.logLoser3Select.value;
   const loser3Deck = DOM.logLoser3Deck.value;
 
-  // Strict Validation: ensure all selected players are unique
   const selectedIds = [winnerId, loser1Id, loser2Id, loser3Id];
   const uniqueIds = new Set(selectedIds);
   
@@ -1623,18 +1794,14 @@ function handleMatchLoggingSubmit(e) {
     { id: loser3Id, deck: loser3Deck }
   ];
 
-  // Log Match in Storage Manager (triggers standard ELO and Bounty calculations)
   const matchResult = StorageManager.logMatch(winnerId, winnerDeck, losers);
   
   if (matchResult) {
-    // Reset form fields
     DOM.matchLoggerForm.reset();
     
-    // Clear selects
     [DOM.logWinnerSelect, DOM.logLoser1Select, DOM.logLoser2Select, DOM.logLoser3Select].forEach(sel => sel.value = "");
     [DOM.logWinnerDeck, DOM.logLoser1Deck, DOM.logLoser2Deck, DOM.logLoser3Deck].forEach(d => d.innerHTML = `<option value="">-- Select Deck --</option>`);
 
-    // Switch view to Dashboard and reload ELO listings
     switchRosterTab('dashboard');
     renderRoster(); // Refresh ELO displays on organizer sidebar
     alert(" EDH Match logged successfully! ELO ratings and Bounty streaks updated.");

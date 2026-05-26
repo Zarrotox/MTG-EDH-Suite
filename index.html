@@ -48,36 +48,59 @@
 
   <!-- SERVICE 1: THE TABLE (DYNAMIC LIFE COUNTER) -->
   <div class="app-container app-view" id="view-table" style="display: none;">
-    <div class="table-setup-card glass-card">
-      <div class="setup-header-row">
-        <h2 class="section-title"><i class="fa-solid fa-gamepad" style="color: var(--color-brand);"></i> Active Combat Table</h2>
-        
-        <div class="table-players-setup">
-          <div class="table-count-control">
-            <span class="input-label" style="margin: 0; padding-right: 0.5rem;">Game Size</span>
-            <button type="button" class="btn-size-table" data-count="2">2</button>
-            <button type="button" class="btn-size-table" data-count="3">3</button>
-            <button type="button" class="btn-size-table active" data-count="4">4</button>
-            <button type="button" class="btn-size-table" data-count="5">5</button>
-          </div>
-        </div>
-
-        <div class="table-controls-actions">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-table-game">
-            <i class="fa-solid fa-rotate-left"></i> Reset Game
-          </button>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-log-table-game">
-            <i class="fa-solid fa-circle-check"></i> Log Result
-          </button>
-        </div>
+    
+    <!-- Thin viewport-friendly top status bar -->
+    <div class="table-status-bar glass-card" style="margin-bottom: 0.5rem; padding: 0.5rem 1rem !important; display: flex; justify-content: space-between; align-items: center; border-radius: var(--radius-sm);">
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span class="pulse-indicator" style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-brand); box-shadow: 0 0 6px var(--glow-brand);"></span>
+        <span id="table-game-status-text" style="font-size:0.75rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Game In Progress</span>
       </div>
+      <div style="display:flex; gap:0.4rem;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-table-setup" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;" title="Configure Players"><i class="fa-solid fa-gears"></i> Setup</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-table-game" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-log-table-game" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;"><i class="fa-solid fa-circle-check"></i> Log Match</button>
+      </div>
+    </div>
 
+    <!-- Sliding Collapsible Setup Drawer -->
+    <div class="table-setup-drawer glass-card" id="table-setup-drawer" style="display: none; margin-bottom: 0.5rem; padding: 1rem !important; border-radius: var(--radius-sm); border-color: var(--color-brand);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:0.5rem;">
+        <h3 class="dialog-title" style="font-size:1rem; display:flex; align-items:center; gap:0.4rem;"><i class="fa-solid fa-sliders"></i> Seat Configuration</h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-table-setup" style="padding:0.2rem 0.4rem; font-size:0.7rem;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      
+      <div class="table-count-control" style="margin-bottom: 0.75rem; display:inline-flex;">
+        <span class="input-label" style="margin: 0; padding-right: 0.5rem; display:flex; align-items:center; font-size:0.7rem;">Game Size</span>
+        <button type="button" class="btn-size-table" data-count="2">2</button>
+        <button type="button" class="btn-size-table" data-count="3">3</button>
+        <button type="button" class="btn-size-table active" data-count="4">4</button>
+        <button type="button" class="btn-size-table" data-count="5">5</button>
+      </div>
+      
       <div class="setup-dropdowns-row" id="table-players-dropdowns-container">
         <!-- Dynamically generated seats selector -->
       </div>
     </div>
 
-    <!-- 2x2 or 5-Player Grid Container -->
+    <!-- Victory Overlay (hidden by default) -->
+    <div class="victory-overlay" id="table-victory-overlay" style="display: none;">
+      <div class="victory-card glass-card highlight">
+        <i class="fa-solid fa-trophy victory-icon"></i>
+        <h2 class="victory-title">Victory!</h2>
+        <p class="victory-subtitle" id="victory-announcement">Jace Beleren has defeated all rivals!</p>
+        
+        <div class="victory-details-box" id="victory-details-box">
+          <!-- Winner and losers ELO shifts display here -->
+        </div>
+        
+        <div class="victory-actions">
+          <button type="button" class="btn btn-secondary" id="btn-victory-dismiss">Dismiss</button>
+          <button type="button" class="btn btn-primary" id="btn-victory-log-roster">Log to Roster</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Viewport-constrained Player Grid Container -->
     <div class="table-grid-arena grid-4" id="table-grid-arena-container">
       <!-- Player Life counter modules populated dynamically -->
     </div>
