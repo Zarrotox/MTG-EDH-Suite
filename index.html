@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Intelligent, responsive Magic the Gathering pod randomizer with local history, dynamic size balancing, saved playgroups, and manual player swaps. Perfect for Commander / EDH.">
+  <title>MTG Pod Randomizer - Planeswalker EDH Table Organizer</title>
+  <!-- PWA Manifest & Mobile Theme Support -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffaa00">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+</head>
+<body>
+
+  <!-- APP HEADER -->
+  <header class="app-header">
+    <div class="brand">
+      <i class="fa-solid fa-circle-nodes brand-icon" id="brand-spark-icon"></i>
+      <div>
+        <h1 class="brand-title">PLANESWALKER</h1>
+        <div class="brand-subtitle">EDH Companion Suite</div>
+      </div>
+    </div>
+
+    <!-- MAIN NAVIGATION MENU -->
+    <nav class="app-nav">
+      <button type="button" class="nav-btn" data-view="table"><i class="fa-solid fa-gamepad"></i> The Table</button>
+      <button type="button" class="nav-btn active" data-view="pod"><i class="fa-solid fa-chess-board"></i> The Pod</button>
+      <button type="button" class="nav-btn" data-view="roster"><i class="fa-solid fa-users-viewfinder"></i> The Roster</button>
+    </nav>
+    
+    <div class="settings-bar">
+      <div class="target-size-control" id="header-pod-size-control">
+        <span>Target Pod Size</span>
+        <button type="button" class="btn-size" id="btn-size-3" data-size="3">3</button>
+        <button type="button" class="btn-size active" id="btn-size-4" data-size="4">4</button>
+        <button type="button" class="btn-size" id="btn-size-5" data-size="5">5</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SERVICE 1: THE TABLE (DYNAMIC LIFE COUNTER) -->
+  <div class="app-container app-view" id="view-table" style="display: none;">
+    <div class="table-setup-card glass-card">
+      <div class="setup-header-row">
+        <h2 class="section-title"><i class="fa-solid fa-gamepad" style="color: var(--color-brand);"></i> Active Combat Table</h2>
+        
+        <div class="table-players-setup">
+          <div class="table-count-control">
+            <span class="input-label" style="margin: 0; padding-right: 0.5rem;">Game Size</span>
+            <button type="button" class="btn-size-table" data-count="2">2</button>
+            <button type="button" class="btn-size-table" data-count="3">3</button>
+            <button type="button" class="btn-size-table active" data-count="4">4</button>
+            <button type="button" class="btn-size-table" data-count="5">5</button>
+          </div>
+        </div>
+
+        <div class="table-controls-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-table-game">
+            <i class="fa-solid fa-rotate-left"></i> Reset Game
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-log-table-game">
+            <i class="fa-solid fa-circle-check"></i> Log Result
+          </button>
+        </div>
+      </div>
+
+      <div class="setup-dropdowns-row" id="table-players-dropdowns-container">
+        <!-- Dynamically generated seats selector -->
+      </div>
+    </div>
+
+    <!-- 2x2 or 5-Player Grid Container -->
+    <div class="table-grid-arena grid-4" id="table-grid-arena-container">
+      <!-- Player Life counter modules populated dynamically -->
+    </div>
+  </div>
+
+  <!-- SERVICE 2: THE POD (LARGE GROUP ORGANIZER) -->
+  <div class="app-container app-view active" id="view-pod">
+    
+    <!-- LEFT SIDEBAR: ROSTER & GROUP MANAGEMENT -->
+    <aside class="sidebar">
+      
+      <!-- ADD PLAYERS SECTION -->
+      <section class="glass-card" id="card-add-players">
+        <h2 class="card-title"><i class="fa-solid fa-user-plus"></i> Add Players</h2>
+        
+        <!-- Individual Player Input -->
+        <div class="input-group">
+          <label for="input-single-name" class="input-label">Individual Player</label>
+          <div class="input-row">
+            <input type="text" id="input-single-name" class="textbox" placeholder="e.g. Chandra Nalaar" autocomplete="off">
+            <button type="button" class="btn btn-primary btn-icon-only" id="btn-add-single" title="Add Player">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bulk/Group Input -->
+        <div class="input-group">
+          <label for="input-bulk-names" class="input-label">Bulk Import (One per line / CSV)</label>
+          <textarea id="input-bulk-names" class="textbox" placeholder="Jace Beleren&#10;Liliana Vess&#10;Gideon Jura&#10;Nissa Revane"></textarea>
+          <button type="button" class="btn btn-secondary mt-1" id="btn-import-bulk">
+            <i class="fa-solid fa-file-import"></i> Import List
+          </button>
+        </div>
+      </section>
+
+      <!-- ACTIVE ROSTER & ACTIONS -->
+      <section class="glass-card" id="card-roster">
+        <div class="roster-header">
+          <h2 class="card-title" style="margin-bottom: 0;"><i class="fa-solid fa-users"></i> Active Roster</h2>
+          <div class="roster-stats" id="roster-stats-display">0 / 0 Selected</div>
+        </div>
+        
+        <div class="flex-space mb-1">
+          <div class="roster-actions">
+            <button type="button" class="roster-action-btn" id="btn-roster-all">All</button>
+            <button type="button" class="roster-action-btn" id="btn-roster-none">None</button>
+          </div>
+          <button type="button" class="roster-action-btn" id="btn-roster-clear" style="color: var(--color-red);">Wipe Pool</button>
+        </div>
+
+        <div class="roster-list" id="roster-list-container">
+          <!-- Populated dynamically via JS -->
+          <div class="empty-state">
+            <i class="fa-solid fa-users-slash"></i>
+            <p>No players added to the pool yet.</p>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-secondary" id="btn-trigger-save-group" style="width: 100%;">
+          <i class="fa-solid fa-bookmark"></i> Save Active as Group
+        </button>
+      </section>
+
+      <!-- SAVED GROUPS LIST -->
+      <section class="glass-card" id="card-saved-groups">
+        <h2 class="card-title"><i class="fa-solid fa-folder-open"></i> Saved Groups</h2>
+        <div class="group-tags" id="saved-groups-container">
+          <!-- Populated dynamically via JS -->
+          <span style="font-size: 0.85rem; color: var(--text-muted);">No saved groups yet.</span>
+        </div>
+      </section>
+      
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT: PLAYGROUND & HISTORY -->
+    <main class="playground">
+      
+      <!-- CONTROLS & STATUS -->
+      <section class="glass-card highlight" id="randomizer-controls">
+        <div class="control-dashboard">
+          <div class="roster-summary">
+            <div class="roster-count-large" id="active-players-counter">0</div>
+            <div class="roster-count-label">Active Combatants</div>
+          </div>
+          
+          <div class="randomize-actions">
+            <button type="button" class="btn btn-primary btn-huge" id="btn-randomize-pods">
+              <i class="fa-solid fa-dice-d20"></i> Randomize Pods
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-save-session" disabled>
+              <i class="fa-solid fa-floppy-disk"></i> Log Session
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- GENERATED PODS VIEWER -->
+      <section class="glass-card" id="current-pods-card" style="min-height: 300px;">
+        
+        <!-- Shuffling Animation Overlay -->
+        <div class="shuffling-animation-overlay" id="shuffle-overlay">
+          <div class="shuffling-loader"></div>
+          <div class="shuffling-text">Shuffling Planeswalkers...</div>
+        </div>
+
+        <div class="section-header">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <h2 class="section-title"><i class="fa-solid fa-chess-board"></i> Active Battlefields</h2>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-swap-mode-toggle" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+              <i class="fa-solid fa-right-left"></i> Swap Mode: OFF
+            </button>
+          </div>
+          <span id="pods-count-indicator" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;"></span>
+        </div>
+
+        <div class="pods-grid" id="pods-grid-container">
+          <!-- Populated dynamically via JS -->
+          <div class="empty-state" style="padding: 4rem 1rem;">
+            <i class="fa-solid fa-dice"></i>
+            <p style="font-size: 1.1rem; font-weight: 500; margin-top: 0.5rem;">Select active players and hit "Randomize Pods" to begin.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">We will automatically balance size splits (e.g. 9 players splits into 3 ideal tables of 3).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SESSION HISTORY LOGS -->
+      <section class="glass-card" id="session-history-card">
+        <div class="section-header">
+          <h2 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Session Logs</h2>
+          <button type="button" class="btn-danger-link btn" id="btn-trigger-clear-history">
+            <i class="fa-solid fa-trash-can"></i> Clear Log History
+          </button>
+        </div>
+
+        <div class="history-list" id="history-logs-container">
+          <!-- Populated dynamically via JS -->
+          <div class="empty-state">
+            <i class="fa-solid fa-database"></i>
+            <p>No logged sessions in this browser yet.</p>
+          </div>
+        </div>
+      </section>
+      
+    </main>
+
+  </div>
+
+  <!-- SERVICE 3: THE ROSTER (STAT & ELO TRACKER) -->
+  <div class="app-container app-view" id="view-roster" style="display: none;">
+    
+    <!-- LEFT SIDEBAR: MANAGE PROFILES & DECK LISTS -->
+    <aside class="sidebar">
+      
+      <!-- PROFILE CREATOR -->
+      <section class="glass-card">
+        <h2 class="card-title"><i class="fa-solid fa-user-plus"></i> Create Profile</h2>
+        <div class="input-group">
+          <label for="roster-profile-name" class="input-label">Planeswalker Name</label>
+          <div class="input-row">
+            <input type="text" id="roster-profile-name" class="textbox" placeholder="e.g. Chandra Nalaar" autocomplete="off">
+            <button type="button" class="btn btn-primary btn-icon-only" id="btn-add-profile">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PLAYER PROFILE LIST & DECK MANAGER -->
+      <section class="glass-card">
+        <h2 class="card-title"><i class="fa-solid fa-users-rectangle"></i> Profile Manager</h2>
+        <div class="profile-select-container" style="margin-bottom: 1rem;">
+          <label for="profile-selector-dropdown" class="input-label">Select Player to Manage</label>
+          <select id="profile-selector-dropdown" class="textbox" style="width: 100%;">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        
+        <div id="deck-management-section" style="display: none;">
+          <h3 class="input-label" style="margin-bottom: 0.5rem; display:flex; justify-content:space-between; align-items:center;">
+            <span>Decks Owned</span>
+            <span id="profile-deck-count" style="font-size:0.75rem; color:var(--color-brand);">0</span>
+          </h3>
+          <div class="roster-list" id="profile-decks-container" style="max-height: 150px; margin-bottom: 1rem; padding: 0.25rem;">
+            <!-- Decks listed dynamically -->
+          </div>
+          
+          <div class="input-group" style="margin-bottom: 0;">
+            <label for="input-new-deck-name" class="input-label">Add New Deck</label>
+            <div class="input-row">
+              <input type="text" id="input-new-deck-name" class="textbox" placeholder="e.g. Golgari Elves" autocomplete="off">
+              <button type="button" class="btn btn-secondary btn-icon-only" id="btn-add-deck">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="profile-empty-state" class="empty-state">
+          <i class="fa-solid fa-user-gear"></i>
+          <p>Create or select a profile above to manage their decks.</p>
+        </div>
+      </section>
+      
+      <!-- PLAYGROUP DETAILS (CLUB STATE) -->
+      <section class="glass-card highlight">
+        <h2 class="card-title"><i class="fa-solid fa-shield-halved"></i> Playgroup Hub</h2>
+        
+        <div class="input-group">
+          <label for="input-club-name" class="input-label">Club Name / Banner</label>
+          <div class="input-row">
+            <input type="text" id="input-club-name" class="textbox" value="Planeswalker Alliance" placeholder="Club Name">
+            <button type="button" class="btn btn-primary btn-icon-only" id="btn-save-club-name" title="Save Club Name">
+              <i class="fa-solid fa-floppy-disk"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="input-group">
+          <label class="input-label">Privacy Mode</label>
+          <div class="toggle-container" style="display: flex; gap: 1rem; align-items: center; margin-top: 0.25rem;">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; color: var(--text-main);">
+              <input type="radio" name="privacy-toggle" value="private" checked id="privacy-private"> Private
+            </label>
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; color: var(--text-main);">
+              <input type="radio" name="privacy-toggle" value="public" id="privacy-public"> Public Tavern
+            </label>
+          </div>
+        </div>
+        
+        <div class="sync-status-box" style="margin-top: 1rem; padding: 0.75rem; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border-glass);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;">
+            <span>Sync: <strong style="color:var(--color-green);">Offline-First Active</strong></span>
+            <span class="pulse-indicator" style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-green); box-shadow: 0 0 6px var(--glow-green);"></span>
+          </div>
+          <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.3;">All stats saved locally. Ready to replicate to global vault once connected.</p>
+          <button type="button" class="btn btn-secondary mt-1" id="btn-export-club-json" style="width: 100%; font-size: 0.75rem; padding: 0.4rem 0.5rem;">
+            <i class="fa-solid fa-download"></i> Backup Club Data (JSON)
+          </button>
+        </div>
+      </section>
+      
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT: LEADERBOARDS & MATCH LOGGING -->
+    <main class="playground">
+      
+      <!-- SUB NAVIGATION FOR ROSTER PANELS -->
+      <div class="roster-tabs-bar" style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 0.5rem; width: 100%;">
+        <button type="button" class="roster-tab-btn active" id="tab-btn-dashboard" data-roster-tab="dashboard">
+          <i class="fa-solid fa-trophy"></i> Dashboard & ELO
+        </button>
+        <button type="button" class="roster-tab-btn" id="tab-btn-log" data-roster-tab="log">
+          <i class="fa-solid fa-file-pen"></i> Log Battle Record
+        </button>
+        <button type="button" class="roster-tab-btn" id="tab-btn-global" data-roster-tab="global">
+          <i class="fa-solid fa-earth-americas"></i> Global Tavern <span style="font-size: 0.65rem; background: var(--color-brand); color: var(--text-dark); padding: 0.05rem 0.25rem; border-radius: 3px; font-weight: bold; margin-left: 0.25rem;">MOCK</span>
+        </button>
+      </div>
+
+      <!-- TAB PANEL 1: DASHBOARD -->
+      <div class="roster-tab-content active" id="roster-tab-dashboard" style="display: flex; flex-direction: column; gap: 2rem; width: 100%;">
+        
+        <!-- ELO LEADERBOARD -->
+        <section class="glass-card" style="padding: 1.25rem;">
+          <h2 class="section-title"><i class="fa-solid fa-crown" style="color: var(--color-brand);"></i> Planeswalker ELO Standings</h2>
+          <div class="leaderboard-table-container" style="margin-top: 1rem; overflow-x: auto;">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th style="width: 8%;">Rank</th>
+                  <th style="text-align: left;">Planeswalker</th>
+                  <th style="width: 15%; text-align: center;">ELO Score</th>
+                  <th style="width: 15%; text-align: center;">Bounty Active</th>
+                  <th style="width: 15%; text-align: center;">Win Streak</th>
+                </tr>
+              </thead>
+              <tbody id="elo-leaderboard-body">
+                <!-- Populated dynamically via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- DECK STATS LEADERBOARD -->
+        <section class="glass-card" style="padding: 1.25rem;">
+          <h2 class="section-title"><i class="fa-solid fa-dharmachakra" style="color: var(--color-blue);"></i> Deck Performance Leaderboard</h2>
+          <div class="leaderboard-table-container" style="margin-top: 1rem; overflow-x: auto;">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th style="width: 8%;">Rank</th>
+                  <th style="text-align: left;">Deck Name</th>
+                  <th style="text-align: left; width: 25%;">Owner</th>
+                  <th style="width: 12%; text-align: center;">Wins</th>
+                  <th style="width: 12%; text-align: center;">Losses</th>
+                  <th style="width: 15%; text-align: center;">Win Rate</th>
+                </tr>
+              </thead>
+              <tbody id="decks-leaderboard-body">
+                <!-- Populated dynamically via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- MATCH RECORDS -->
+        <section class="glass-card">
+          <div class="section-header" style="margin-bottom: 1rem;">
+            <h2 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Match History</h2>
+            <button type="button" class="btn-danger-link btn" id="btn-trigger-clear-matches">
+              <i class="fa-solid fa-trash-can"></i> Erase Match History
+            </button>
+          </div>
+          <div class="history-list" id="matches-history-container">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </section>
+
+      </div>
+
+      <!-- TAB PANEL 2: MATCH LOGGER -->
+      <div class="roster-tab-content" id="roster-tab-log" style="display: none; width: 100%;">
+        <section class="glass-card highlight">
+          <h2 class="section-title"><i class="fa-solid fa-pen-to-square" style="color: var(--color-brand);"></i> Log EDH Battle Record</h2>
+          <p class="input-label" style="margin: 0.5rem 0 1.5rem 0; text-transform: none; font-size: 0.85rem; line-height: 1.4;">
+            Log match outcome. Choose exactly 1 Winner and 3 Losers, and select the specific deck each person played. ELO scores and Bounty multipliers will recalculate instantly.
+          </p>
+          
+          <form id="match-logger-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            
+            <!-- WINNER BLOCK -->
+            <div class="match-form-row winner-box">
+              <div class="form-role-badge winner"><i class="fa-solid fa-crown"></i> Winner</div>
+              <div class="form-select-group">
+                <div class="form-field">
+                  <label class="input-label">Winner Name</label>
+                  <select id="log-winner-select" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Winner --</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="input-label">Winner Deck</label>
+                  <select id="log-winner-deck" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Deck --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOSER 1 BLOCK -->
+            <div class="match-form-row loser-box">
+              <div class="form-role-badge loser">Loser 1</div>
+              <div class="form-select-group">
+                <div class="form-field">
+                  <label class="input-label">Loser 1 Name</label>
+                  <select id="log-loser1-select" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Loser 1 --</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="input-label">Loser 1 Deck</label>
+                  <select id="log-loser1-deck" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Deck --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOSER 2 BLOCK -->
+            <div class="match-form-row loser-box">
+              <div class="form-role-badge loser">Loser 2</div>
+              <div class="form-select-group">
+                <div class="form-field">
+                  <label class="input-label">Loser 2 Name</label>
+                  <select id="log-loser2-select" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Loser 2 --</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="input-label">Loser 2 Deck</label>
+                  <select id="log-loser2-deck" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Deck --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOSER 3 BLOCK -->
+            <div class="match-form-row loser-box">
+              <div class="form-role-badge loser">Loser 3</div>
+              <div class="form-select-group">
+                <div class="form-field">
+                  <label class="input-label">Loser 3 Name</label>
+                  <select id="log-loser3-select" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Loser 3 --</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="input-label">Loser 3 Deck</label>
+                  <select id="log-loser3-deck" class="textbox" style="width: 100%;" required>
+                    <option value="">-- Select Deck --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-submit-row" style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+              <button type="submit" class="btn btn-primary btn-huge" id="btn-submit-match-log" style="width: 100%; max-width: 250px;">
+                <i class="fa-solid fa-floppy-disk"></i> Log Battle Record
+              </button>
+            </div>
+            
+          </form>
+        </section>
+      </div>
+
+      <!-- TAB PANEL 3: GLOBAL TAVERN (MOCK) -->
+      <div class="roster-tab-content" id="roster-tab-global" style="display: none; width: 100%;">
+        <section class="glass-card" style="text-align: center; padding: 3rem 1.5rem;">
+          <i class="fa-solid fa-earth-americas" style="font-size: 3.5rem; color: var(--color-brand); text-shadow: 0 0 15px var(--glow-brand); margin-bottom: 1rem;"></i>
+          <h2 class="brand-title" style="font-size: 1.8rem; margin-bottom: 0.25rem;">THE GLOBAL TAVERN</h2>
+          <p class="brand-subtitle" style="font-size: 0.75rem; letter-spacing: 0.15em; margin-bottom: 1.5rem;">Universal Playgroup Index</p>
+          
+          <div style="max-width: 480px; margin: 0 auto;">
+            <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.5rem;">
+              Prepare to test your spark against playgroups worldwide! When cloud replication goes live, your local club will sync up to public or private rankings automatically.
+            </p>
+            
+            <div class="mock-leaderboard-teaser" style="background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
+              <div style="font-size: 0.75rem; color: var(--color-brand); font-weight: bold; margin-bottom: 0.75rem; text-transform: uppercase;">Top Sparks Global Rankings</div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 0.4rem 0; font-size: 0.85rem;">
+                <span>1. Nicol Bolas (Elder Dragon Guild)</span>
+                <span style="color: var(--color-brand); font-weight: bold;">1742 ELO</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 0.4rem 0; font-size: 0.85rem;">
+                <span>2. Teferi Timebender (Zhalfirin Keepers)</span>
+                <span style="color: var(--color-brand); font-weight: bold;">1695 ELO</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.85rem;">
+                <span>3. Elspeth Sun (Theros Vanguard)</span>
+                <span style="color: var(--color-brand); font-weight: bold;">1621 ELO</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- NATIVE MODAL DIALOGS -->
+  
+  <!-- Clear History Warning Modal -->
+  <dialog id="clear-history-dialog">
+    <div class="dialog-header">
+      <h3 class="dialog-title">Clear Logs History</h3>
+    </div>
+    <div class="dialog-body">
+      Are you sure you want to permanently erase the history of all randomized pods? This action is absolute and cannot be undone.
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-clear-history">Cancel</button>
+      <button type="button" class="btn btn-primary" id="btn-confirm-clear-history" style="background: var(--color-red); box-shadow: 0 4px 15px rgba(255, 60, 60, 0.3);">Erase All</button>
+    </div>
+  </dialog>
+
+  <!-- Wipe Roster Warning Modal -->
+  <dialog id="clear-players-dialog">
+    <div class="dialog-header">
+      <h3 class="dialog-title">Wipe Player Pool</h3>
+    </div>
+    <div class="dialog-body">
+      Are you sure you want to erase all players in your master pool? This will also unselect them and clear the roster view.
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-clear-players">Cancel</button>
+      <button type="button" class="btn btn-primary" id="btn-confirm-clear-players" style="background: var(--color-red); box-shadow: 0 4px 15px rgba(255, 60, 60, 0.3);">Wipe Pool</button>
+    </div>
+  </dialog>
+
+  <!-- Wipe Matches History Warning Modal -->
+  <dialog id="clear-matches-dialog">
+    <div class="dialog-header">
+      <h3 class="dialog-title">Erase Playgroup Matches</h3>
+    </div>
+    <div class="dialog-body">
+      Are you sure you want to permanently erase the history of all logged roster matches? This will also reset all players to 1200 ELO, 0 win streaks, and clear their active bounties. This action cannot be undone.
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-clear-matches">Cancel</button>
+      <button type="button" class="btn btn-primary" id="btn-confirm-clear-matches" style="background: var(--color-red); box-shadow: 0 4px 15px rgba(255, 60, 60, 0.3);">Erase All</button>
+    </div>
+  </dialog>
+
+  <!-- Save Named Group Modal -->
+  <dialog id="save-group-dialog">
+    <div class="dialog-header">
+      <h3 class="dialog-title">Save Roster Group</h3>
+    </div>
+    <div class="dialog-body">
+      Give a name to the current collection of active players (e.g. "Tuesday Night Commander") so you can bulk-toggle them on/off later.
+      
+      <div class="input-group mt-1">
+        <label for="input-group-name" class="input-label">Group Name</label>
+        <input type="text" id="input-group-name" class="textbox" placeholder="e.g. Commander Pod 1" autocomplete="off">
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-save-group">Cancel</button>
+      <button type="button" class="btn btn-primary" id="btn-confirm-save-group">Save Group</button>
+    </div>
+  </dialog>
+
+  <!-- Scripts -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

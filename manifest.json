@@ -1,0 +1,23 @@
+{
+  "name": "Planeswalker Pod Randomizer",
+  "short_name": "Planeswalker",
+  "description": "Intelligent and responsive Magic the Gathering pod randomizer and table seating organizer.",
+  "start_url": "./index.html",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#06070a",
+  "theme_color": "#ffaa00",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
