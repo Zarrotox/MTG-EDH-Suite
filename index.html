@@ -49,8 +49,8 @@
   <!-- SERVICE 1: THE TABLE (DYNAMIC LIFE COUNTER) -->
   <div class="app-container app-view" id="view-table" style="display: none;">
     
-    <!-- Thin viewport-friendly top status bar -->
-    <div class="table-status-bar glass-card" style="margin-bottom: 0.5rem; padding: 0.5rem 1rem !important; display: flex; justify-content: space-between; align-items: center; border-radius: var(--radius-sm);">
+    <!-- Immersive Mode Status Bar (Hidden by default in CSS, only shows if customized) -->
+    <div class="table-status-bar glass-card" style="display: none; margin-bottom: 0.5rem; padding: 0.5rem 1rem !important; justify-content: space-between; align-items: center; border-radius: var(--radius-sm);">
       <div style="display:flex; align-items:center; gap:0.5rem;">
         <span class="pulse-indicator" style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-brand); box-shadow: 0 0 6px var(--glow-brand);"></span>
         <span id="table-game-status-text" style="font-size:0.75rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Game In Progress</span>
@@ -103,6 +103,29 @@
     <!-- Viewport-constrained Player Grid Container -->
     <div class="table-grid-arena grid-4" id="table-grid-arena-container">
       <!-- Player Life counter modules populated dynamically -->
+    </div>
+
+    <!-- Lotus-Style Center Floating Menu Trigger -->
+    <button type="button" class="table-center-menu-btn" id="btn-table-center-menu" title="Open Table Menu">
+      <i class="fa-solid fa-circle-chevron-down"></i>
+    </button>
+
+    <!-- Global Immersive Radial Menu Overlay -->
+    <div class="table-immersive-menu-overlay" id="table-immersive-menu-overlay" style="display: none;">
+      <div class="immersive-menu-card glass-card highlight">
+        <h3 class="brand-title" style="font-size: 1.4rem; text-shadow: 0 0 10px var(--glow-brand); margin-bottom: 1.25rem; color: var(--color-brand); text-align: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+          <i class="fa-solid fa-circle-nodes"></i> BATTLEGROUND MENU
+        </h3>
+        
+        <div class="immersive-menu-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" id="btn-imm-setup" style="font-size:0.85rem; padding:0.6rem;"><i class="fa-solid fa-gears"></i> Seat Setup</button>
+          <button type="button" class="btn btn-secondary" id="btn-imm-reset" style="font-size:0.85rem; padding:0.6rem;"><i class="fa-solid fa-rotate-left"></i> Reset Game</button>
+          <button type="button" class="btn btn-primary" id="btn-imm-log" style="grid-column: span 2; font-size:0.95rem; padding:0.75rem;"><i class="fa-solid fa-circle-check"></i> Log Match Record</button>
+          <button type="button" class="btn btn-secondary" id="btn-imm-exit" style="grid-column: span 2; font-size:0.85rem; padding:0.6rem; background: rgba(255, 60, 60, 0.08); border-color: rgba(255, 60, 60, 0.2); color: var(--color-red);"><i class="fa-solid fa-door-open"></i> Exit to Main Menu</button>
+        </div>
+        
+        <button type="button" class="btn btn-secondary mt-1" id="btn-imm-close" style="width: 100%; font-size:0.85rem; padding:0.5rem; border-color:rgba(255,255,255,0.05); margin-top:1rem;">Resume Game</button>
+      </div>
     </div>
   </div>
 

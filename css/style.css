@@ -1322,19 +1322,34 @@ dialog::backdrop {
   transition: all var(--transition-medium);
 }
 
-.player-table-card.w-theme { border-color: rgba(244, 246, 249, 0.15); }
+.player-table-card.w-theme { 
+  border-color: rgba(244, 246, 249, 0.15); 
+  background: linear-gradient(135deg, rgba(244, 246, 249, 0.08) 0%, rgba(13, 15, 21, 0.96) 100%) !important;
+}
 .player-table-card.w-theme::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--color-white); box-shadow: 0 0 8px var(--glow-white); }
 
-.player-table-card.u-theme { border-color: rgba(0, 195, 255, 0.15); }
+.player-table-card.u-theme { 
+  border-color: rgba(0, 195, 255, 0.15); 
+  background: linear-gradient(135deg, rgba(0, 195, 255, 0.08) 0%, rgba(13, 15, 21, 0.96) 100%) !important;
+}
 .player-table-card.u-theme::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--color-blue); box-shadow: 0 0 8px var(--glow-blue); }
 
-.player-table-card.b-theme { border-color: rgba(193, 0, 255, 0.15); }
+.player-table-card.b-theme { 
+  border-color: rgba(193, 0, 255, 0.15); 
+  background: linear-gradient(135deg, rgba(193, 0, 255, 0.08) 0%, rgba(13, 15, 21, 0.96) 100%) !important;
+}
 .player-table-card.b-theme::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--color-black); box-shadow: 0 0 8px var(--glow-black); }
 
-.player-table-card.r-theme { border-color: rgba(255, 60, 60, 0.15); }
+.player-table-card.r-theme { 
+  border-color: rgba(255, 60, 60, 0.15); 
+  background: linear-gradient(135deg, rgba(255, 60, 60, 0.08) 0%, rgba(13, 15, 21, 0.96) 100%) !important;
+}
 .player-table-card.r-theme::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--color-red); box-shadow: 0 0 8px var(--glow-red); }
 
-.player-table-card.g-theme { border-color: rgba(0, 255, 102, 0.15); }
+.player-table-card.g-theme { 
+  border-color: rgba(0, 255, 102, 0.15); 
+  background: linear-gradient(135deg, rgba(0, 255, 102, 0.08) 0%, rgba(13, 15, 21, 0.96) 100%) !important;
+}
 .player-table-card.g-theme::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:var(--color-green); box-shadow: 0 0 8px var(--glow-green); }
 
 .player-table-card.lethal-commander {
@@ -2033,5 +2048,135 @@ dialog::backdrop {
   .form-role-badge {
     width: 100%;
   }
+}
+
+/* ==========================================================================
+   IMMERSIBLE FACE-TO-FACE TABLE MODE (LOTUS / PLAYGROUP.GG STYLE)
+   ========================================================================== */
+
+/* 1. Immersive Canvas Mode overrides */
+body.table-immersive-mode .app-header {
+  display: none !important;
+}
+
+body.table-immersive-mode .app-nav {
+  display: none !important;
+}
+
+body.table-immersive-mode {
+  padding-bottom: 0 !important;
+  overflow: hidden !important;
+}
+
+body.table-immersive-mode #view-table {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+body.table-immersive-mode .table-grid-arena {
+  height: 100% !important;
+  max-height: 100% !important;
+  gap: 0 !important; /* Zero gaps for clean merged tablet layout */
+}
+
+body.table-immersive-mode .player-table-card {
+  border-radius: 0 !important; /* Flat edges for seamless quadrants */
+  border: 1px solid rgba(255, 255, 255, 0.03) !important;
+}
+
+/* 2. Face-to-Face 180° Seat Rotations */
+/* Inverts top row players so they face the players sitting across the table */
+.table-grid-arena.grid-4 .player-table-card:nth-child(1),
+.table-grid-arena.grid-4 .player-table-card:nth-child(2) {
+  transform: rotate(180deg);
+}
+
+.table-grid-arena.grid-2 .player-table-card:nth-child(1) {
+  transform: rotate(180deg);
+}
+
+.table-grid-arena.grid-3 .player-table-card:nth-child(1),
+.table-grid-arena.grid-3 .player-table-card:nth-child(2) {
+  transform: rotate(180deg);
+}
+
+.table-grid-arena.grid-5 .player-table-card:nth-child(1),
+.table-grid-arena.grid-5 .player-table-card:nth-child(2) {
+  transform: rotate(180deg);
+}
+
+/* 3. Rotated Drawer Panels (Top row) */
+/* Anchors top row drawers at the top, sliding down upside-down */
+.drawer-panel.rotated {
+  bottom: auto;
+  top: 0;
+  border-top: none;
+  border-bottom: 3px solid var(--color-brand);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  transform: translateY(-100%) rotate(180deg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px var(--glow-brand);
+}
+
+.drawer-panel.rotated.open {
+  transform: translateY(0) rotate(180deg);
+}
+
+/* 4. Central Floating Global Menu Trigger Button */
+.table-center-menu-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-deep);
+  border: 2px solid var(--color-brand);
+  color: var(--color-brand);
+  box-shadow: 0 0 12px var(--glow-brand), 0 4px 10px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  z-index: 1001; /* Renders above all rotated cards and life adjusting zones */
+  transition: all var(--transition-fast);
+}
+
+.table-center-menu-btn:hover {
+  background: var(--color-brand);
+  color: var(--text-dark);
+  box-shadow: 0 0 22px var(--color-brand);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* 5. Fullscreen Immersive Menu Overlay */
+.table-immersive-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(4, 5, 8, 0.94);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  z-index: 5000; /* Overlays the entire screen */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.immersive-menu-card {
+  max-width: 360px;
+  width: 100%;
+  padding: 1.5rem !important;
+  background: var(--bg-glass-heavy) !important;
+  border-color: var(--color-brand) !important;
+  box-shadow: 0 0 25px var(--glow-brand) !important;
+  animation: swapPulse 2s infinite alternate ease-in-out;
 }
 

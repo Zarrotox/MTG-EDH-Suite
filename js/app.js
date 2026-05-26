@@ -873,6 +873,13 @@ function setupGlobalNavigation() {
 function switchView(viewName) {
   State.activeView = viewName;
   
+  // Toggle body class for immersive full-screen active game view
+  if (viewName === 'table') {
+    document.body.classList.add('table-immersive-mode');
+  } else {
+    document.body.classList.remove('table-immersive-mode');
+  }
+  
   // Update nav buttons active states
   DOM.navButtons.forEach(btn => {
     if (btn.dataset.view === viewName) {
@@ -1063,16 +1070,9 @@ function setupTableEvents() {
 
   // Reset table game
   DOM.btnResetTableGame.addEventListener('click', () => {
-    State.tableState.players.forEach(p => {
-      p.life = 40;
-      p.poison = 0;
-      p.rad = 0;
-      p.tax = 0;
-      p.cmdDamage = {};
-    });
+    resetTableCounters();
     // Dismiss victory overlay if active
     DOM.tableVictoryOverlay.style.display = 'none';
-    renderTableArena();
   });
 
   // Log table result shortcut
@@ -1115,11 +1115,62 @@ function setupTableEvents() {
 
     console.log("Pre-filled active game into Roster Match Logger!");
   });
+
+  // LOTUS IMMERSIVE MENU EVENT BINDINGS
+  const centerMenuBtn = document.getElementById('btn-table-center-menu');
+  const immersiveMenuOverlay = document.getElementById('table-immersive-menu-overlay');
+  const immSetupBtn = document.getElementById('btn-imm-setup');
+  const immResetBtn = document.getElementById('btn-imm-reset');
+  const immLogBtn = document.getElementById('btn-imm-log');
+  const immExitBtn = document.getElementById('btn-imm-exit');
+  const immCloseBtn = document.getElementById('btn-imm-close');
+
+  if (centerMenuBtn && immersiveMenuOverlay) {
+    centerMenuBtn.onclick = () => {
+      immersiveMenuOverlay.style.display = 'flex';
+    };
+
+    // Close when clicking resume or overlay backdrop
+    immCloseBtn.onclick = () => {
+      immersiveMenuOverlay.style.display = 'none';
+    };
+
+    immersiveMenuOverlay.onclick = (e) => {
+      if (e.target === immersiveMenuOverlay) {
+        immersiveMenuOverlay.style.display = 'none';
+      }
+    };
+
+    immSetupBtn.onclick = () => {
+      immersiveMenuOverlay.style.display = 'none';
+      DOM.tableSetupDrawer.style.display = 'block';
+    };
+
+    immResetBtn.onclick = () => {
+      immersiveMenuOverlay.style.display = 'none';
+      resetTableCounters();
+      DOM.tableVictoryOverlay.style.display = 'none';
+    };
+
+    immLogBtn.onclick = () => {
+      immersiveMenuOverlay.style.display = 'none';
+      DOM.btnLogTableGame.click();
+    };
+
+    immExitBtn.onclick = () => {
+      immersiveMenuOverlay.style.display = 'none';
+      switchView('pod');
+    };
+  }
 }
 
 function renderTableArena() {
   DOM.tableGridArenaContainer.innerHTML = '';
   DOM.tableGridArenaContainer.className = `table-grid-arena grid-${State.tableState.playerCount}`;
+
+  // Remove any existing drawer panels first to prevent accumulation
+  const existingDrawers = document.querySelectorAll('#view-table > .drawer-panel');
+  existingDrawers.forEach(dr => dr.remove());
 
   const seatThemes = ['w-theme', 'u-theme', 'b-theme', 'r-theme', 'g-theme'];
 
@@ -1198,63 +1249,78 @@ function renderTableArena() {
           <i class="fa-solid fa-sliders"></i>
         </button>
       </div>
+    `;
 
-      <!-- Hidden Drawers Overlay (Rendered fixed relative to viewport) -->
-      <div class="drawer-panel" data-seat="${index}">
-        <div class="drawer-handle" data-action="drawer-close"></div>
-        <div class="drawer-header" style="text-align: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.75rem;">
-          <h3 style="font-family: var(--font-display); color: var(--color-brand); font-size: 1.35rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-shadow: 0 0 10px var(--glow-brand); margin-bottom: 0.2rem;">
-            <i class="fa-solid fa-user-gear"></i> ${escapeHtml(player.name)}'s Trackers
-          </h3>
-          <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Deck: ${escapeHtml(player.deck)} • Seat ${index + 1}</span>
-        </div>
+    const drawer = document.createElement('div');
+    drawer.className = 'drawer-panel';
+    drawer.dataset.seat = index;
+    
+    // Check if the seat is rotated dynamically based on game size
+    const isRotated = (State.tableState.playerCount === 2) ? (index === 0) : (index === 0 || index === 1);
+    if (isRotated) {
+      drawer.classList.add('rotated');
+    }
+
+    drawer.innerHTML = `
+      <div class="drawer-handle" data-action="drawer-close"></div>
+      <div class="drawer-header" style="text-align: center; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.75rem;">
+        <h3 style="font-family: var(--font-display); color: var(--color-brand); font-size: 1.35rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; text-shadow: 0 0 10px var(--glow-brand); margin-bottom: 0.2rem;">
+          <i class="fa-solid fa-user-gear"></i> ${escapeHtml(player.name)}'s Trackers
+        </h3>
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Deck: ${escapeHtml(player.deck)} • Seat ${index + 1}</span>
+      </div>
+      
+      <div class="drawer-body-grid">
         
-        <div class="drawer-body-grid">
-          
-          <div class="drawer-counter-card">
-            <span class="drawer-card-label"><i class="fa-solid fa-biohazard" style="color:var(--color-green);"></i> Poison</span>
-            <div class="drawer-counter-row">
-              <button type="button" class="btn-drawer-counter" data-action="poison-dec">-</button>
-              <span class="drawer-counter-val" style="color:var(--color-green);">${player.poison}</span>
-               <button type="button" class="btn-drawer-counter" data-action="poison-inc">+</button>
-            </div>
+        <div class="drawer-counter-card">
+          <span class="drawer-card-label"><i class="fa-solid fa-biohazard" style="color:var(--color-green);"></i> Poison</span>
+          <div class="drawer-counter-row">
+            <button type="button" class="btn-drawer-counter" data-action="poison-dec">-</button>
+            <span class="drawer-counter-val" style="color:var(--color-green);">${player.poison}</span>
+             <button type="button" class="btn-drawer-counter" data-action="poison-inc">+</button>
           </div>
-
-          <div class="drawer-counter-card">
-            <span class="drawer-card-label"><i class="fa-solid fa-radiation" style="color:var(--color-brand);"></i> Rads</span>
-            <div class="drawer-counter-row">
-              <button type="button" class="btn-drawer-counter" data-action="rad-dec">-</button>
-              <span class="drawer-counter-val" style="color:var(--color-brand);">${player.rad}</span>
-              <button type="button" class="btn-drawer-counter" data-action="rad-inc">+</button>
-            </div>
-          </div>
-
-          <!-- Commander Tax shifted to drawer for clean Lotus-like card aesthetics -->
-          <div class="drawer-counter-card" style="grid-column: span 2;">
-            <span class="drawer-card-label"><i class="fa-solid fa-gavel"></i> Commander Tax</span>
-            <div class="drawer-counter-row">
-              <button type="button" class="btn-drawer-counter" data-action="tax-dec">-</button>
-              <span class="drawer-counter-val" style="color:var(--color-brand);">${player.tax}</span>
-              <button type="button" class="btn-drawer-counter" data-action="tax-inc">+</button>
-            </div>
-          </div>
-
-          <div class="drawer-commander-dmg-block">
-            <span class="drawer-card-label" style="justify-content:flex-start; margin-bottom:0.25rem;"><i class="fa-solid fa-crown" style="color:var(--color-brand);"></i> Commander Damage Received (Max 21)</span>
-            ${cmdDmgHtml}
-          </div>
-
         </div>
+
+        <div class="drawer-counter-card">
+          <span class="drawer-card-label"><i class="fa-solid fa-radiation" style="color:var(--color-brand);"></i> Rads</span>
+          <div class="drawer-counter-row">
+            <button type="button" class="btn-drawer-counter" data-action="rad-dec">-</button>
+            <span class="drawer-counter-val" style="color:var(--color-brand);">${player.rad}</span>
+            <button type="button" class="btn-drawer-counter" data-action="rad-inc">+</button>
+          </div>
+        </div>
+
+        <!-- Commander Tax shifted to drawer for clean Lotus-like card aesthetics -->
+        <div class="drawer-counter-card" style="grid-column: span 2;">
+          <span class="drawer-card-label"><i class="fa-solid fa-gavel"></i> Commander Tax</span>
+          <div class="drawer-counter-row">
+            <button type="button" class="btn-drawer-counter" data-action="tax-dec">-</button>
+            <span class="drawer-counter-val" style="color:var(--color-brand);">${player.tax}</span>
+            <button type="button" class="btn-drawer-counter" data-action="tax-inc">+</button>
+          </div>
+        </div>
+
+        <div class="drawer-commander-dmg-block">
+          <span class="drawer-card-label" style="justify-content:flex-start; margin-bottom:0.25rem;"><i class="fa-solid fa-crown" style="color:var(--color-brand);"></i> Commander Damage Received (Max 21)</span>
+          ${cmdDmgHtml}
+        </div>
+
       </div>
     `;
 
-    bindTableCardEvents(card, index);
+    bindTableCardEvents(card, drawer, index);
 
     DOM.tableGridArenaContainer.appendChild(card);
+    
+    // Append drawers directly to view-table to bypass transformations and rotation boundaries
+    const viewTable = document.getElementById('view-table');
+    if (viewTable) {
+      viewTable.appendChild(drawer);
+    }
   });
 }
 
-function bindTableCardEvents(card, seatIndex) {
+function bindTableCardEvents(card, drawer, seatIndex) {
   const p = State.tableState.players[seatIndex];
 
   // Life buttons
@@ -1262,27 +1328,26 @@ function bindTableCardEvents(card, seatIndex) {
   card.querySelector('[data-action="life-inc"]').onclick = () => { p.life++; renderTableArena(); checkTableGameEnd(); };
 
   // Tax buttons inside drawer
-  card.querySelector('[data-action="tax-dec"]').onclick = () => { p.tax = Math.max(0, p.tax - 2); renderTableArena(); };
-  card.querySelector('[data-action="tax-inc"]').onclick = () => { p.tax += 2; renderTableArena(); };
+  drawer.querySelector('[data-action="tax-dec"]').onclick = () => { p.tax = Math.max(0, p.tax - 2); renderTableArena(); };
+  drawer.querySelector('[data-action="tax-inc"]').onclick = () => { p.tax += 2; renderTableArena(); };
 
   // Drawer slider triggers
-  const drawer = card.querySelector('.drawer-panel');
   card.querySelector('[data-action="drawer-open"]').onclick = () => { drawer.classList.add('open'); };
-  card.querySelector('[data-action="drawer-close"]').onclick = () => { drawer.classList.remove('open'); };
+  drawer.querySelector('[data-action="drawer-close"]').onclick = () => { drawer.classList.remove('open'); };
 
   // Tapping the active indicators area also opens trackers drawer (very friendly mobile gesture!)
   card.querySelector('.active-counters-indicator').onclick = () => { drawer.classList.add('open'); };
 
   // Poison buttons
-  card.querySelector('[data-action="poison-dec"]').onclick = () => { p.poison = Math.max(0, p.poison - 1); renderTableArena(); checkTableGameEnd(); };
-  card.querySelector('[data-action="poison-inc"]').onclick = () => { p.poison++; renderTableArena(); checkTableGameEnd(); };
+  drawer.querySelector('[data-action="poison-dec"]').onclick = () => { p.poison = Math.max(0, p.poison - 1); renderTableArena(); checkTableGameEnd(); };
+  drawer.querySelector('[data-action="poison-inc"]').onclick = () => { p.poison++; renderTableArena(); checkTableGameEnd(); };
 
   // Rads buttons
-  card.querySelector('[data-action="rad-dec"]').onclick = () => { p.rad = Math.max(0, p.rad - 1); renderTableArena(); checkTableGameEnd(); };
-  card.querySelector('[data-action="rad-inc"]').onclick = () => { p.rad++; renderTableArena(); checkTableGameEnd(); };
+  drawer.querySelector('[data-action="rad-dec"]').onclick = () => { p.rad = Math.max(0, p.rad - 1); renderTableArena(); checkTableGameEnd(); };
+  drawer.querySelector('[data-action="rad-inc"]').onclick = () => { p.rad++; renderTableArena(); checkTableGameEnd(); };
 
   // Commander Damage counters
-  card.querySelectorAll('[data-action^="cmd-dmg-"]').forEach(btn => {
+  drawer.querySelectorAll('[data-action^="cmd-dmg-"]').forEach(btn => {
     btn.onclick = () => {
       const oppId = btn.dataset.opp;
       const isInc = btn.dataset.action === 'cmd-dmg-inc';
@@ -1298,7 +1363,7 @@ function bindTableCardEvents(card, seatIndex) {
     };
   });
 
-  // SWIPE DRAG GESTURES FOR DRAWER CLOSING (SWIPE DOWN TO DISMISS)
+  // SWIPE DRAG GESTURES FOR DRAWER CLOSING (SWIPE TO DISMISS)
   let startY = 0;
   drawer.addEventListener('touchstart', (e) => {
     startY = e.touches[0].clientY;
@@ -1307,8 +1372,18 @@ function bindTableCardEvents(card, seatIndex) {
   drawer.addEventListener('touchend', (e) => {
     const endY = e.changedTouches[0].clientY;
     const diffY = endY - startY;
-    if (diffY > 80) { // Dragged down more than 80px
-      drawer.classList.remove('open');
+    
+    const isRotated = drawer.classList.contains('rotated');
+    if (isRotated) {
+      // Rotated top seats slide down, so we swipe UP to dismiss them
+      if (diffY < -80) {
+        drawer.classList.remove('open');
+      }
+    } else {
+      // Normal bottom seats slide up, so we swipe DOWN to dismiss them
+      if (diffY > 80) {
+        drawer.classList.remove('open');
+      }
     }
   }, { passive: true });
 }
